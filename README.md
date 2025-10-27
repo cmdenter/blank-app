@@ -1,13 +1,16 @@
-# 📊 Lead-Lag Analysis Dashboard
+# 📈 Stock Lead-Lag Analysis Dashboard
 
-A professional Streamlit application for analyzing lead-lag relationships between financial time series data. Specifically designed for analyzing relationships between Bitcoin (BTC), ISM Manufacturing Index, and M2 Money Supply (Liquidity).
+A professional Streamlit application for analyzing lead-lag relationships between stocks using real-time data from Yahoo Finance. Discover which stocks lead or lag the market, analyze causal relationships, and identify trading opportunities through quantitative analysis.
 
 ## Features
 
 ### Core Functionality
-- **Data Input**
-  - CSV file upload support
-  - Sample data generation with realistic lead-lag relationships
+- **Real-Time Data Fetching**
+  - Yahoo Finance API integration
+  - Support for any stock ticker (stocks, ETFs, indices)
+  - Multiple time periods (1mo to max history)
+  - Quick presets for popular stock combinations
+  - Sample data generation for testing
 
 - **Stationarity Testing**
   - Augmented Dickey-Fuller (ADF) tests
@@ -99,24 +102,44 @@ streamlit run lead_lag_app.py
 
 2. Open your browser to the URL shown (typically http://localhost:8501)
 
-3. Choose your data source:
-   - **Upload CSV**: Upload your own data file
-   - **Generate Sample Data**: Create synthetic data with realistic patterns
+3. Enter stock tickers:
+   - **Choose Quick Presets**: Tech Giants, Market Indices, Banks, Energy, etc.
+   - **Custom Tickers**: Enter any valid Yahoo Finance symbols (e.g., `AAPL,MSFT,GOOGL`)
+   - **Sample Data**: Generate synthetic data for testing
 
-### Data Format
+4. Select time period (1 month to max history)
 
-If uploading your own CSV file, ensure it has these columns:
-- `Date` - Timestamp (parseable by pandas)
-- `BTC` - Bitcoin price or returns
-- `ISM` - ISM Index values
-- `M2` - M2 Money Supply or liquidity metric
+5. Click "Fetch Data" and start analyzing!
 
-Example:
-```csv
-Date,BTC,ISM,M2
-2023-01-01,30000,52.5,100.2
-2023-01-02,30500,52.6,100.3
-...
+### Supported Tickers
+
+Any valid Yahoo Finance symbol works:
+- **Stocks**: `AAPL`, `MSFT`, `TSLA`, `GOOGL`, `NVDA`, `AMD`, etc.
+- **ETFs**: `SPY`, `QQQ`, `DIA`, `IWM`, `XLE`, `XLF`, `XLK`, etc.
+- **Indices**: `^GSPC` (S&P 500), `^DJI` (Dow Jones), `^IXIC` (NASDAQ)
+- **International**: `BABA`, `TSM`, `NIO`, etc.
+
+### Example Analyses
+
+**Tech Sector Leadership:**
+```
+AAPL, MSFT, NVDA, AMD
+```
+
+**Market Index Relationships:**
+```
+SPY, QQQ, DIA, IWM
+```
+
+**Sector Rotation:**
+```
+XLE, XLF, XLK, XLV
+```
+(Energy, Finance, Tech, Healthcare ETFs)
+
+**Individual vs Market:**
+```
+TSLA, AAPL, SPY
 ```
 
 ### Configuration Parameters
@@ -191,6 +214,7 @@ Adjust these in the sidebar:
 - `scipy`: Statistical functions
 - `statsmodels`: Time series analysis
 - `networkx`: Network graph visualization
+- `yfinance`: Yahoo Finance API for real-time stock data
 
 ## Export Options
 
@@ -202,9 +226,10 @@ Download results:
 
 ### Common Issues
 
-**"Data must contain columns: Date, BTC, ISM, M2"**
-- Ensure your CSV has exactly these column names
-- Check for typos or extra spaces
+**"Error fetching data"**
+- Check if ticker symbols are valid (try them on finance.yahoo.com first)
+- Some international stocks may require country suffix (e.g., `0700.HK` for Tencent)
+- Network issues: retry after a moment
 
 **"Could not compute Granger causality"**
 - May indicate insufficient data points
@@ -224,19 +249,23 @@ Download results:
 ## Best Practices
 
 1. **Check Stationarity First**: Always run ADF tests before other analyses
-2. **Difference if Needed**: Non-stationary series should be differenced
+2. **Use Returns for Stocks**: Stock prices are usually non-stationary; consider using returns (percent changes)
 3. **Start with Cross-Correlation**: Identify lead-lag structure first
 4. **Validate with Granger**: Use Granger tests to confirm causality
-5. **Monitor Rolling Correlations**: Watch for regime changes
+5. **Monitor Rolling Correlations**: Watch for regime changes and structural breaks
+6. **Compare Similar Assets**: Best results when analyzing stocks in similar sectors or size
+7. **Longer Periods**: Use 1-2 years of data minimum for reliable statistical tests
 
 ## Use Cases
 
-- Cryptocurrency market analysis
-- Economic indicator relationships
-- Liquidity impact studies
-- Trading strategy development
-- Risk factor identification
-- Market timing research
+- **Pairs Trading**: Identify stocks with strong lead-lag relationships
+- **Sector Rotation**: Analyze which sectors lead market movements
+- **Market Leadership**: Determine if individual stocks lead or follow indices
+- **Risk Management**: Understand correlation breakdowns during market stress
+- **Trading Strategies**: Develop predictive models based on causality
+- **Portfolio Construction**: Build portfolios with diversified lead-lag profiles
+- **Market Timing**: Use leading indicators to anticipate market moves
+- **ETF Analysis**: Compare sector ETF relationships and momentum
 
 ## Contributing
 

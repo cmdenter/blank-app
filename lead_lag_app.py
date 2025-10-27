@@ -1,7 +1,7 @@
 """
-Lead-Lag Analysis Application
-Professional Streamlit app for analyzing lead-lag relationships between financial time series
-(BTC, ISM, M2 Liquidity)
+Stock Lead-Lag Analysis Application
+Professional Streamlit app for analyzing lead-lag relationships between stock time series
+Uses Yahoo Finance for real-time data
 """
 
 import streamlit as st
@@ -14,25 +14,23 @@ import networkx as nx
 from statsmodels.tsa.stattools import grangercausalitytests, adfuller
 from scipy import stats
 from scipy.signal import correlate
+import yfinance as yf
 import io
 from datetime import datetime, timedelta
 
 # Page configuration
 st.set_page_config(
-    page_title="Lead-Lag Analysis",
-    page_icon="📊",
+    page_title="Stock Lead-Lag Analysis",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Professional color scheme
-COLORS = {
-    'BTC': '#F7931A',  # Bitcoin orange
-    'ISM': '#4169E1',  # Royal blue
-    'M2': '#32CD32',   # Lime green
-    'background': '#0E1117',
-    'text': '#FAFAFA'
-}
+# Color palette for stocks
+COLOR_PALETTE = [
+    '#F7931A', '#4169E1', '#32CD32', '#FF6B6B', '#9D4EDD',
+    '#FCA311', '#06FFA5', '#FF006E', '#8338EC', '#3A86FF'
+]
 
 # Custom CSS for professional styling
 st.markdown("""
@@ -57,29 +55,49 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def generate_sample_data(n_points=500):
+@st.cache_data(ttl=3600)
+def fetch_stock_data(tickers, period="1y", interval="1d"):
+    """Fetch stock data from Yahoo Finance"""
+    try:
+        data = yf.download(tickers, period=period, interval=interval, progress=False)
+
+        # Handle single vs multiple tickers
+        if len(tickers) == 1:
+            df = pd.DataFrame({
+                'Date': data.index,
+                tickers[0]: data['Close'].values
+            })
+        else:
+            # Get close prices for multiple tickers
+            df = pd.DataFrame({'Date': data.index})
+            for ticker in tickers:
+                if ('Close', ticker) in data.columns:
+                    df[ticker] = data['Close'][ticker].values
+                else:
+                    df[ticker] = data['Close'].values
+
+        df = df.reset_index(drop=True)
+        return df, None
+    except Exception as e:
+        return None, str(e)
+
+
+def generate_sample_data(tickers, n_points=252):
     """Generate sample data with realistic lead-lag relationships"""
     np.random.seed(42)
     dates = pd.date_range(end=datetime.now(), periods=n_points, freq='D')
 
-    # M2 leads both ISM and BTC
-    m2_trend = np.cumsum(np.random.randn(n_points) * 0.5) + 100
-    m2 = m2_trend + np.random.randn(n_points) * 2
+    df = pd.DataFrame({'Date': dates})
 
-    # ISM lags M2 by ~30 days
-    ism_base = np.roll(m2_trend, 30) * 0.5 + 50
-    ism = ism_base + np.random.randn(n_points) * 1.5
+    # Generate correlated random walks for stocks
+    base_trend = np.cumsum(np.random.randn(n_points) * 0.02) + 100
 
-    # BTC lags M2 by ~14 days and has higher volatility
-    btc_base = np.roll(m2_trend, 14) * 2 + 30000
-    btc = btc_base + np.random.randn(n_points) * 500
-
-    df = pd.DataFrame({
-        'Date': dates,
-        'BTC': btc,
-        'ISM': ism,
-        'M2': m2
-    })
+    for i, ticker in enumerate(tickers):
+        # Each stock has a different lag relationship
+        lag = i * 5
+        trend = np.roll(base_trend, lag)
+        volatility = 5 + i * 2
+        df[ticker] = trend + np.random.randn(n_points) * volatility
 
     return df
 
@@ -150,38 +168,30 @@ def granger_causality_test(data, variables, max_lag=10):
     return pd.DataFrame(results)
 
 
-def plot_time_series(data):
+def get_color_map(variables):
+    """Create a color map for the given variables"""
+    return {var: COLOR_PALETTE[i % len(COLOR_PALETTE)] for i, var in enumerate(variables)}
+
+
+def plot_time_series(data, variables, color_map):
     """Create interactive time series plot"""
+    n_vars = len(variables)
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=n_vars, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.05,
-        subplot_titles=('BTC Price', 'ISM Index', 'M2 Liquidity')
+        subplot_titles=tuple(variables)
     )
 
-    # BTC
-    fig.add_trace(
-        go.Scatter(x=data['Date'], y=data['BTC'], name='BTC',
-                   line=dict(color=COLORS['BTC'], width=2)),
-        row=1, col=1
-    )
-
-    # ISM
-    fig.add_trace(
-        go.Scatter(x=data['Date'], y=data['ISM'], name='ISM',
-                   line=dict(color=COLORS['ISM'], width=2)),
-        row=2, col=1
-    )
-
-    # M2
-    fig.add_trace(
-        go.Scatter(x=data['Date'], y=data['M2'], name='M2',
-                   line=dict(color=COLORS['M2'], width=2)),
-        row=3, col=1
-    )
+    for i, var in enumerate(variables):
+        fig.add_trace(
+            go.Scatter(x=data['Date'], y=data[var], name=var,
+                       line=dict(color=color_map[var], width=2)),
+            row=i+1, col=1
+        )
 
     fig.update_layout(
-        height=700,
+        height=200 * n_vars,
         showlegend=True,
         template='plotly_dark',
         title_text="Time Series Data",
@@ -198,13 +208,13 @@ def plot_cross_correlation(lags, correlations, var1, var2):
     fig.add_trace(go.Bar(
         x=lags,
         y=correlations,
-        marker_color=[COLORS['BTC'] if c > 0 else COLORS['ISM'] for c in correlations],
+        marker_color=['#32CD32' if c > 0 else '#FF6B6B' for c in correlations],
         name='Cross-correlation'
     ))
 
     optimal_lag, optimal_corr = find_optimal_lag(lags, correlations)
 
-    fig.add_vline(x=optimal_lag, line_dash="dash", line_color="red",
+    fig.add_vline(x=optimal_lag, line_dash="dash", line_color="yellow",
                   annotation_text=f"Optimal Lag: {optimal_lag}")
 
     fig.update_layout(
@@ -218,7 +228,7 @@ def plot_cross_correlation(lags, correlations, var1, var2):
     return fig, optimal_lag, optimal_corr
 
 
-def plot_granger_network(granger_results):
+def plot_granger_network(granger_results, color_map):
     """Create network graph of Granger causality relationships"""
     # Filter significant relationships
     sig_results = granger_results[granger_results['significant']]
@@ -268,7 +278,7 @@ def plot_granger_network(granger_results):
         node_x.append(x)
         node_y.append(y)
         node_text.append(node)
-        node_colors.append(COLORS.get(node, '#888'))
+        node_colors.append(color_map.get(node, '#888'))
 
     node_trace = go.Scatter(
         x=node_x, y=node_y,
@@ -333,7 +343,7 @@ def plot_lead_lag_heatmap(data, variables, max_lag=50):
                         x=lags,
                         y=correlations_matrix[i, j, :],
                         mode='lines',
-                        line=dict(color=COLORS.get(var1, '#888')),
+                        line=dict(color=COLOR_PALETTE[i % len(COLOR_PALETTE)]),
                         showlegend=False
                     ),
                     row=i+1, col=j+1
@@ -346,14 +356,14 @@ def plot_lead_lag_heatmap(data, variables, max_lag=50):
                     yref=f"y{i*n_vars+j+1}",
                     x=0, y=0.5,
                     showarrow=False,
-                    font=dict(size=16, color=COLORS.get(var1, '#888')),
+                    font=dict(size=16, color=COLOR_PALETTE[i % len(COLOR_PALETTE)]),
                     row=i+1, col=j+1
                 )
 
     fig.update_layout(
         title="Lead-Lag Analysis Heatmap",
         template='plotly_dark',
-        height=800
+        height=300 * n_vars
     )
 
     return fig
@@ -365,20 +375,20 @@ def calculate_rolling_correlation(data, var1, var2, window=30):
     return rolling_corr
 
 
-def plot_rolling_correlation(data, variables, window=30):
+def plot_rolling_correlation(data, variables, window=30, color_map=None):
     """Plot rolling correlations between all variable pairs"""
     fig = go.Figure()
 
-    pairs = [(v1, v2) for v1 in variables for v2 in variables if v1 < v2]
+    pairs = [(v1, v2) for i, v1 in enumerate(variables) for j, v2 in enumerate(variables) if i < j]
 
-    for var1, var2 in pairs:
+    for idx, (var1, var2) in enumerate(pairs):
         rolling_corr = calculate_rolling_correlation(data, var1, var2, window)
         fig.add_trace(go.Scatter(
             x=data['Date'],
             y=rolling_corr,
             mode='lines',
             name=f"{var1} vs {var2}",
-            line=dict(width=2)
+            line=dict(width=2, color=COLOR_PALETTE[idx % len(COLOR_PALETTE)])
         ))
 
     fig.update_layout(
@@ -395,8 +405,8 @@ def plot_rolling_correlation(data, variables, window=30):
 
 # Main Application
 def main():
-    st.title("📊 Lead-Lag Analysis Dashboard")
-    st.markdown("### Professional Time Series Lead-Lag Relationship Analysis")
+    st.title("📈 Stock Lead-Lag Analysis Dashboard")
+    st.markdown("### Analyze Lead-Lag Relationships Between Stocks Using Real Yahoo Finance Data")
     st.markdown("---")
 
     # Sidebar
@@ -406,30 +416,81 @@ def main():
         # Data source selection
         data_source = st.radio(
             "Data Source",
-            ["Upload CSV", "Generate Sample Data"]
+            ["Yahoo Finance", "Sample Data"]
         )
 
-        if data_source == "Upload CSV":
-            uploaded_file = st.file_uploader(
-                "Upload CSV file",
-                type=['csv'],
-                help="CSV should contain columns: Date, BTC, ISM, M2"
+        if data_source == "Yahoo Finance":
+            st.subheader("📊 Stock Tickers")
+
+            # Predefined popular combinations
+            preset = st.selectbox(
+                "Quick Presets",
+                ["Custom", "Tech Giants (AAPL, MSFT, GOOGL)", "Market Indices (SPY, QQQ, DIA)",
+                 "Banks (JPM, BAC, GS)", "Energy (XOM, CVX, COP)", "Tech (AAPL, NVDA, AMD)"]
             )
 
-            if uploaded_file is not None:
-                try:
-                    data = pd.read_csv(uploaded_file)
-                    data['Date'] = pd.to_datetime(data['Date'])
-                    st.success(f"✅ Loaded {len(data)} rows")
-                except Exception as e:
-                    st.error(f"Error loading file: {str(e)}")
-                    data = None
+            if preset == "Custom":
+                ticker_input = st.text_input(
+                    "Enter Stock Tickers (comma-separated)",
+                    value="AAPL,MSFT,GOOGL",
+                    help="Example: AAPL,MSFT,GOOGL or SPY,QQQ,DIA"
+                )
+            elif preset == "Tech Giants (AAPL, MSFT, GOOGL)":
+                ticker_input = "AAPL,MSFT,GOOGL"
+            elif preset == "Market Indices (SPY, QQQ, DIA)":
+                ticker_input = "SPY,QQQ,DIA"
+            elif preset == "Banks (JPM, BAC, GS)":
+                ticker_input = "JPM,BAC,GS"
+            elif preset == "Energy (XOM, CVX, COP)":
+                ticker_input = "XOM,CVX,COP"
+            elif preset == "Tech (AAPL, NVDA, AMD)":
+                ticker_input = "AAPL,NVDA,AMD"
+
+            tickers = [t.strip().upper() for t in ticker_input.split(",") if t.strip()]
+
+            if len(tickers) < 2:
+                st.error("Please enter at least 2 stock tickers")
+                return
+
+            if len(tickers) > 6:
+                st.warning("⚠️ More than 6 stocks may be slow. Consider using fewer tickers.")
+
+            # Time period selection
+            period = st.selectbox(
+                "Time Period",
+                ["1mo", "3mo", "6mo", "1y", "2y", "5y", "max"],
+                index=3
+            )
+
+            # Fetch data
+            if st.button("📥 Fetch Data", type="primary"):
+                with st.spinner(f"Fetching data for {', '.join(tickers)}..."):
+                    data, error = fetch_stock_data(tickers, period=period)
+
+                    if error:
+                        st.error(f"Error fetching data: {error}")
+                        st.info("Try different tickers or check if they are valid Yahoo Finance symbols")
+                        data = None
+                    else:
+                        st.session_state['data'] = data
+                        st.session_state['tickers'] = tickers
+                        st.success(f"✅ Loaded {len(data)} rows for {len(tickers)} stocks")
+
+            # Use cached data if available
+            if 'data' in st.session_state:
+                data = st.session_state['data']
+                tickers = st.session_state['tickers']
             else:
                 data = None
-        else:
-            n_points = st.slider("Number of data points", 100, 1000, 500)
-            data = generate_sample_data(n_points)
-            st.success(f"✅ Generated {len(data)} rows of sample data")
+
+        else:  # Sample Data
+            st.subheader("📊 Sample Stocks")
+            n_stocks = st.slider("Number of stocks", 2, 5, 3)
+            tickers = [f"STOCK{i+1}" for i in range(n_stocks)]
+            n_points = st.slider("Number of data points", 100, 500, 252)
+
+            data = generate_sample_data(tickers, n_points)
+            st.success(f"✅ Generated {len(data)} rows for {len(tickers)} stocks")
 
         if data is not None:
             st.markdown("---")
@@ -440,31 +501,46 @@ def main():
             rolling_window = st.slider("Rolling Window (days)", 10, 100, 30)
 
     # Main content
-    if data is None:
-        st.info("👈 Please upload data or generate sample data to begin analysis")
+    if 'data' not in locals() or data is None:
+        st.info("👈 Please configure and fetch stock data from the sidebar to begin analysis")
+
+        # Show example
+        st.subheader("📖 How to Use")
+        st.markdown("""
+        1. **Choose Data Source:** Select Yahoo Finance for real stock data or Sample Data for testing
+        2. **Enter Tickers:** Type stock symbols like `AAPL,MSFT,GOOGL` or use quick presets
+        3. **Fetch Data:** Click the button to download historical data
+        4. **Analyze:** Explore the tabs to discover lead-lag relationships
+
+        **Popular Analysis Examples:**
+        - Tech stocks: `AAPL, MSFT, NVDA, AMD`
+        - Market indices: `SPY, QQQ, DIA, IWM`
+        - Sector rotation: `XLE, XLF, XLK, XLV` (Energy, Finance, Tech, Healthcare ETFs)
+        - Individual vs Index: `TSLA, AAPL, SPY`
+        """)
         return
 
     # Validate data
-    required_columns = ['Date', 'BTC', 'ISM', 'M2']
-    if not all(col in data.columns for col in required_columns):
-        st.error(f"Data must contain columns: {', '.join(required_columns)}")
+    if 'Date' not in data.columns:
+        st.error("Data must contain a 'Date' column")
         return
 
-    variables = ['BTC', 'ISM', 'M2']
+    variables = [col for col in data.columns if col != 'Date']
+    color_map = get_color_map(variables)
 
     # Display data summary
     st.subheader("📈 Data Overview")
-    col1, col2, col3 = st.columns(3)
+    cols = st.columns(len(variables) + 2)
 
-    with col1:
-        st.metric("Data Points", len(data))
-    with col2:
-        st.metric("Start Date", data['Date'].min().strftime('%Y-%m-%d'))
-    with col3:
-        st.metric("End Date", data['Date'].max().strftime('%Y-%m-%d'))
+    cols[0].metric("Data Points", len(data))
+    cols[1].metric("Date Range", f"{data['Date'].min().strftime('%Y-%m-%d')} to {data['Date'].max().strftime('%Y-%m-%d')}")
+
+    for i, var in enumerate(variables):
+        change = ((data[var].iloc[-1] - data[var].iloc[0]) / data[var].iloc[0] * 100)
+        cols[i+2].metric(var, f"${data[var].iloc[-1]:.2f}", f"{change:+.2f}%")
 
     # Time series plot
-    st.plotly_chart(plot_time_series(data), use_container_width=True)
+    st.plotly_chart(plot_time_series(data, variables, color_map), use_container_width=True)
 
     # Tabs for different analyses
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -486,7 +562,7 @@ def main():
 
         # Create results dataframe
         adf_df = pd.DataFrame([{
-            'Variable': r['variable'],
+            'Stock': r['variable'],
             'ADF Statistic': f"{r['adf_statistic']:.4f}",
             'P-Value': f"{r['p_value']:.4f}",
             'Stationary': '✅ Yes' if r['is_stationary'] else '❌ No',
@@ -503,18 +579,18 @@ def main():
             if result['is_stationary']:
                 st.success(f"✅ **{result['variable']}** is stationary (p < 0.05)")
             else:
-                st.warning(f"⚠️ **{result['variable']}** is non-stationary (p >= 0.05). Consider differencing.")
+                st.warning(f"⚠️ **{result['variable']}** is non-stationary (p >= 0.05). Consider using returns instead of prices.")
 
     with tab2:
         st.subheader("Cross-Correlation Analysis")
-        st.markdown("*Identifying lead-lag relationships between variables*")
+        st.markdown("*Identifying lead-lag relationships between stocks*")
 
         # Select variable pair
         col1, col2 = st.columns(2)
         with col1:
-            var1_ccf = st.selectbox("Variable 1", variables, key='ccf_var1')
+            var1_ccf = st.selectbox("Stock 1", variables, key='ccf_var1')
         with col2:
-            var2_ccf = st.selectbox("Variable 2", [v for v in variables if v != var1_ccf], key='ccf_var2')
+            var2_ccf = st.selectbox("Stock 2", [v for v in variables if v != var1_ccf], key='ccf_var2')
 
         lags, correlations = calculate_cross_correlation(
             data[var1_ccf].values,
@@ -541,7 +617,7 @@ def main():
 
     with tab3:
         st.subheader("Granger Causality Tests")
-        st.markdown("*Testing if one variable can predict another (H0: X does not Granger-cause Y)*")
+        st.markdown("*Testing if one stock can predict another (H0: X does not Granger-cause Y)*")
 
         with st.spinner("Running Granger causality tests..."):
             granger_results = granger_causality_test(data, variables, max_lag_granger)
@@ -555,7 +631,7 @@ def main():
             st.dataframe(granger_display, use_container_width=True)
 
             # Network visualization
-            fig_network = plot_granger_network(granger_results)
+            fig_network = plot_granger_network(granger_results, color_map)
             if fig_network:
                 st.plotly_chart(fig_network, use_container_width=True)
 
@@ -577,22 +653,22 @@ def main():
         st.markdown("""
         **How to read this heatmap:**
         - Each cell shows cross-correlation as a function of lag
-        - Positive lag: row variable leads column variable
-        - Negative lag: column variable leads row variable
+        - Positive lag: row stock leads column stock
+        - Negative lag: column stock leads row stock
         - Peak indicates optimal lead-lag relationship
         """)
 
     with tab5:
         st.subheader("Rolling Correlation Analysis")
-        st.markdown("*Time-varying correlations between variables*")
+        st.markdown("*Time-varying correlations between stocks*")
 
-        fig_rolling = plot_rolling_correlation(data, variables, rolling_window)
+        fig_rolling = plot_rolling_correlation(data, variables, rolling_window, color_map)
         st.plotly_chart(fig_rolling, use_container_width=True)
 
         st.markdown(f"""
         **Rolling Window:** {rolling_window} days
 
-        Rolling correlations show how relationships between variables change over time.
+        Rolling correlations show how relationships between stocks change over time.
         This can help identify regime changes and time-varying lead-lag dynamics.
         """)
 
@@ -607,15 +683,15 @@ def main():
         csv_buffer = io.StringIO()
         data.to_csv(csv_buffer, index=False)
         st.download_button(
-            label="Download Time Series Data",
+            label="Download Stock Data",
             data=csv_buffer.getvalue(),
-            file_name="time_series_data.csv",
+            file_name=f"stock_data_{'_'.join(variables)}.csv",
             mime="text/csv"
         )
 
     with col2:
         # Download Granger results
-        if len(granger_results) > 0:
+        if 'granger_results' in locals() and len(granger_results) > 0:
             granger_buffer = io.StringIO()
             granger_results.to_csv(granger_buffer, index=False)
             st.download_button(
