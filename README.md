@@ -59,6 +59,35 @@ A professional Streamlit application for analyzing lead-lag relationships betwee
 pip install -r requirements.txt
 ```
 
+## Deploy to Web (FREE)
+
+### Streamlit Community Cloud (Recommended - 100% Free)
+
+Deploy your app to the web in under 2 minutes:
+
+1. **Visit Streamlit Community Cloud**
+   - Go to: https://share.streamlit.io/
+   - Click "Sign in with GitHub"
+
+2. **Deploy Your App**
+   - Click "New app"
+   - Repository: `cmdenter/blank-app`
+   - Branch: `claude/create-lead-lag-app-011CUYL969KFG5L3DEBvxQ1T`
+   - Main file: `lead_lag_app.py`
+   - Click "Deploy"
+
+3. **Your app will be live at:**
+   `https://[your-custom-name].streamlit.app`
+
+**Free tier includes:**
+- Unlimited public apps
+- Auto-updates from GitHub
+- 1 GB RAM per app
+- Custom subdomain
+- SSL/HTTPS included
+
+The app is pre-configured with optimal settings in `.streamlit/config.toml` for immediate deployment.
+
 ## Usage
 
 ### Quick Start
