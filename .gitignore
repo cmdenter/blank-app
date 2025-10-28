@@ -4,6 +4,8 @@
 node_modules/
 package-lock.json
 *.local
+# Don't ignore dist - Vercel needs it
+# dist/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
