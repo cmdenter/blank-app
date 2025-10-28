@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSignAndExecuteTransactionBlock } from '@mysten/dapp-kit';
+import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { useNetworkVariable, MIST_PER_SUI, USDC_TYPE, USDC_DECIMALS } from '../config/sui';
 import './Forms.css';
@@ -17,7 +17,7 @@ export function TradeForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { mutate: signAndExecute } = useSignAndExecuteTransactionBlock();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
 
   // Calculate minimum output based on slippage
   const calculateMinOutput = (input: string, slippagePercent: string) => {
@@ -94,7 +94,7 @@ export function TradeForm() {
 
       signAndExecute(
         {
-          transactionBlock: tx,
+          transaction: tx,
           options: {
             showEffects: true,
             showEvents: true,

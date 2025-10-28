@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSignAndExecuteTransactionBlock } from '@mysten/dapp-kit';
+import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { useNetworkVariable, MIST_PER_SUI, USDC_TYPE, USDC_DECIMALS } from '../config/sui';
 import './Forms.css';
@@ -13,7 +13,7 @@ export function WithdrawForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { mutate: signAndExecute } = useSignAndExecuteTransactionBlock();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
 
   const handleWithdraw = async () => {
     const sui = parseFloat(suiAmount) || 0;
@@ -46,7 +46,7 @@ export function WithdrawForm() {
 
       signAndExecute(
         {
-          transactionBlock: tx,
+          transaction: tx,
           options: {
             showEffects: true,
           },

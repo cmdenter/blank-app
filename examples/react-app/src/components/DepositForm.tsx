@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSignAndExecuteTransactionBlock, useSuiClient } from '@mysten/dapp-kit';
+import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { useNetworkVariable, MIST_PER_SUI } from '../config/sui';
 import './Forms.css';
@@ -7,13 +7,12 @@ import './Forms.css';
 export function DepositForm() {
   const packageId = useNetworkVariable('packageId');
   const vaultId = useNetworkVariable('vaultId');
-  const suiClient = useSuiClient();
 
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [txResult, setTxResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const { mutate: signAndExecute } = useSignAndExecuteTransactionBlock();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
 
   const handleDeposit = async () => {
     if (!amount || parseFloat(amount) <= 0) {
@@ -43,7 +42,7 @@ export function DepositForm() {
       // Sign and execute
       signAndExecute(
         {
-          transactionBlock: tx,
+          transaction: tx,
           options: {
             showEffects: true,
             showObjectChanges: true,
