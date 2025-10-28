@@ -1,0 +1,28 @@
+{
+  "name": "sui-swap-vault-examples",
+  "version": "1.0.0",
+  "description": "TypeScript examples for Sui Swap Vault integration",
+  "main": "ptb_example.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "ts-node ptb_example.ts"
+  },
+  "keywords": [
+    "sui",
+    "defi",
+    "swap",
+    "vault",
+    "deepbook",
+    "turbos"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mysten/sui.js": "^0.54.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
