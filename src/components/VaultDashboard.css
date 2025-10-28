@@ -1,0 +1,109 @@
+.vault-dashboard {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.main-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.sidebar-section {
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+}
+
+/* Action Card */
+.action-card {
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--background);
+}
+
+.tab {
+  flex: 1;
+  padding: 1rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+.tab.active {
+  color: var(--primary-color);
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary-color);
+}
+
+.tab-content {
+  padding: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-section {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-content {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab {
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .tab.active::after {
+    left: 0;
+    right: auto;
+    width: 3px;
+    height: 100%;
+    bottom: 0;
+  }
+}

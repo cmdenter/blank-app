@@ -1,5 +1,10 @@
 .streamlit/secrets.toml
 
+# Node / React
+node_modules/
+package-lock.json
+*.local
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
