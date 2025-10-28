@@ -2,6 +2,9 @@
 Stock Lead-Lag Analysis Application
 Professional Streamlit app for analyzing lead-lag relationships between stock time series
 Uses Yahoo Finance for real-time data
+
+Security: All sensitive configurations are managed through Streamlit secrets or environment variables.
+No API keys are hardcoded in the source code.
 """
 
 import streamlit as st
@@ -16,7 +19,19 @@ from scipy import stats
 from scipy.signal import correlate
 import yfinance as yf
 import io
+import os
 from datetime import datetime, timedelta
+
+# Security: Load configuration from Streamlit secrets or environment variables
+# Note: yfinance is a free library and doesn't require API keys
+# This infrastructure is here for future extensibility (e.g., paid data providers)
+def get_config(key, default=None):
+    """Safely get configuration from Streamlit secrets or environment variables"""
+    # Try Streamlit secrets first (for cloud deployment)
+    if hasattr(st, 'secrets') and key in st.secrets:
+        return st.secrets[key]
+    # Fall back to environment variables (for local development)
+    return os.environ.get(key, default)
 
 # Page configuration
 st.set_page_config(

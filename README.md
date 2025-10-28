@@ -62,6 +62,37 @@ A professional Streamlit application for analyzing lead-lag relationships betwee
 pip install -r requirements.txt
 ```
 
+## Security
+
+### 🔒 API Keys & Secrets
+
+**Current Status: No API keys required!**
+
+This app uses **Yahoo Finance (yfinance)**, which is completely free and doesn't require any API keys or authentication. You can deploy and use it immediately without any configuration.
+
+### Future Extensibility
+
+The app is built with security-first infrastructure for adding premium data providers:
+
+- **Secrets Management**: Uses Streamlit secrets or environment variables
+- **No Hardcoded Keys**: All sensitive data accessed via `get_config()` function
+- **Git Protection**: `.streamlit/secrets.toml` is in `.gitignore`
+- **Documentation**: See `SECURITY.md` and `.streamlit/secrets.toml.example`
+
+### Best Practices
+
+✅ **DO:**
+- Use Streamlit Cloud secrets for deployed apps
+- Use `.streamlit/secrets.toml` for local development
+- Keep secrets out of version control
+
+❌ **DON'T:**
+- Hardcode API keys in source code
+- Commit `.streamlit/secrets.toml` to git
+- Share API keys publicly
+
+For detailed security guidelines, see **[SECURITY.md](SECURITY.md)**
+
 ## Deploy to Web (FREE)
 
 ### Streamlit Community Cloud (Recommended - 100% Free)
