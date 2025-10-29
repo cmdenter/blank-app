@@ -58,9 +58,9 @@ export function PriceChart({ pair = 'SUI/USD' }: PriceChartProps) {
     // Initialize price service (fetches from Bluefin and other Sui DEXes)
     const priceService = new PriceService('sui');
 
-    // Load real historical data from DEX Screener
+    // Load REAL historical OHLC data from CoinGecko (actual trading data, not simulated!)
     priceService
-      .getHistoricalData('bluefin') // Primary source: Bluefin
+      .getHistoricalData(1) // Last 24 hours of REAL candles
       .then((data) => {
         if (data && data.length > 0) {
           // Convert to candlestick format
@@ -192,7 +192,7 @@ export function PriceChart({ pair = 'SUI/USD' }: PriceChartProps) {
                 backgroundColor: '#2a2a3e',
                 borderRadius: '4px',
               }}>
-                30min
+                4h
               </span>
               <span style={{
                 padding: '0.25rem 0.5rem',

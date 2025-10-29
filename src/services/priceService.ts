@@ -1,6 +1,7 @@
 /**
- * Real-time Price Service using DEX Screener API
- * Fetches live SUI/USDC price data from Sui DEXes (including Bluefin)
+ * Real-time Price Service
+ * - Current prices from Bluefin (via DEX Screener) - real Sui ecosystem data
+ * - Historical OHLC from CoinGecko - real candlestick data
  */
 
 export interface PriceData {
@@ -22,12 +23,14 @@ export interface OHLCData {
 }
 
 /**
- * Price Service for fetching live cryptocurrency price data from Sui DEXes
- * Uses DEX Screener API which aggregates data from Bluefin, Cetus, Turbos, and other Sui DEXes
+ * Price Service for fetching live cryptocurrency price data
+ * Combines Bluefin/DEX Screener for current prices and CoinGecko for historical OHLC
  */
 export class PriceService {
   private chainId: string;
   private dexScreenerBaseUrl = 'https://api.dexscreener.com/latest';
+  private coinGeckoBaseUrl = 'https://api.coingecko.com/api/v3';
+  private coinId = 'sui';
 
   // SUI/USDC pair addresses on different DEXes
   private readonly PAIR_ADDRESSES = {
@@ -41,7 +44,7 @@ export class PriceService {
   }
 
   /**
-   * Get current live price from DEX Screener (aggregates Sui DEX data)
+   * Get current live price from DEX Screener (Bluefin and other Sui DEXes)
    */
   async getCurrentPrice(dex: 'bluefin' | 'cetus' | 'turbos' = 'bluefin'): Promise<PriceData> {
     try {
@@ -71,7 +74,38 @@ export class PriceService {
         source: `${pair.dexId} on ${this.chainId}`,
       };
     } catch (error) {
-      console.error('Error fetching current price:', error);
+      console.error('Error fetching current price from DEX Screener:', error);
+      // Fallback to CoinGecko for current price
+      return this.getCurrentPriceFromCoinGecko();
+    }
+  }
+
+  /**
+   * Get current price from CoinGecko (fallback)
+   */
+  private async getCurrentPriceFromCoinGecko(): Promise<PriceData> {
+    try {
+      const response = await fetch(
+        `${this.coinGeckoBaseUrl}/simple/price?ids=${this.coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true`
+      );
+
+      if (!response.ok) {
+        throw new Error(`CoinGecko API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const coinData = data[this.coinId];
+
+      return {
+        price: coinData.usd,
+        timestamp: Date.now(),
+        priceChange24h: coinData.usd_24h_change || 0,
+        volume24h: coinData.usd_24h_vol || 0,
+        liquidity: 0,
+        source: 'coingecko',
+      };
+    } catch (error) {
+      console.error('Error fetching from CoinGecko:', error);
       throw error;
     }
   }
@@ -119,72 +153,39 @@ export class PriceService {
   }
 
   /**
-   * Get historical OHLC data
-   * Note: DEX Screener doesn't provide historical OHLC via public API
-   * For now, we'll build candles from real-time data
+   * Get REAL historical OHLC data from CoinGecko
+   * This returns actual candlestick data, not simulated!
    */
-  async getHistoricalData(dex: 'bluefin' | 'cetus' | 'turbos' = 'bluefin'): Promise<OHLCData[]> {
+  async getHistoricalData(days: number = 1): Promise<OHLCData[]> {
     try {
-      // Get current price data
-      const currentPrice = await this.getCurrentPrice(dex);
-
-      // For now, generate approximate historical data based on current price
-      // In production, you'd store real-time updates to build historical data
-      const candles: OHLCData[] = [];
-      const now = Math.floor(Date.now() / 1000);
-      const price = currentPrice.price;
-
-      // Generate last 24 hours of 30-minute candles (48 candles)
-      for (let i = 48; i > 0; i--) {
-        const time = now - (i * 1800); // 30 minutes = 1800 seconds
-
-        // Simulate realistic price movement within recent range
-        const variation = 0.02; // 2% max variation
-        const open = price * (1 + (Math.random() - 0.5) * variation);
-        const close = price * (1 + (Math.random() - 0.5) * variation);
-        const high = Math.max(open, close) * (1 + Math.random() * variation * 0.5);
-        const low = Math.min(open, close) * (1 - Math.random() * variation * 0.5);
-
-        candles.push({
-          time,
-          open,
-          high,
-          low,
-          close,
-          volume: currentPrice.volume24h / 48, // Approximate
-        });
-      }
-
-      return candles;
-    } catch (error) {
-      console.error('Error fetching historical data:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get real-time data for specific token on Sui
-   */
-  async getTokenData(tokenSymbol: string = 'SUI'): Promise<any> {
-    try {
+      // CoinGecko OHLC endpoint - returns REAL historical candlestick data
       const response = await fetch(
-        `${this.dexScreenerBaseUrl}/dex/search?q=${tokenSymbol}`
+        `${this.coinGeckoBaseUrl}/coins/${this.coinId}/ohlc?vs_currency=usd&days=${days}`
       );
 
       if (!response.ok) {
-        throw new Error(`DEX Screener API error: ${response.status}`);
+        throw new Error(`CoinGecko OHLC API error: ${response.status}`);
       }
 
       const data = await response.json();
-      return data.pairs?.filter((p: any) => p.chainId === 'sui') || [];
+
+      // CoinGecko returns: [[timestamp, open, high, low, close], ...]
+      // This is REAL historical data from actual trades
+      return data.map((candle: number[]) => ({
+        time: Math.floor(candle[0] / 1000), // Convert ms to seconds
+        open: candle[1],
+        high: candle[2],
+        low: candle[3],
+        close: candle[4],
+      }));
     } catch (error) {
-      console.error('Error fetching token data:', error);
+      console.error('Error fetching real historical OHLC data:', error);
       throw error;
     }
   }
 
   /**
-   * Subscribe to real-time price updates
+   * Subscribe to real-time price updates from Bluefin/Sui DEXes
    * Polls the API at regular intervals
    */
   subscribeToPriceUpdates(
@@ -225,9 +226,9 @@ export function usePriceData(
   useEffect(() => {
     const service = new PriceService(chainId);
 
-    // Load historical data
+    // Load REAL historical data from CoinGecko (no simulation!)
     service
-      .getHistoricalData(dex)
+      .getHistoricalData(1) // Last 24 hours of REAL candles
       .then((data) => {
         setHistoricalData(data);
         setLoading(false);
@@ -238,7 +239,7 @@ export function usePriceData(
         setLoading(false);
       });
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates from Bluefin
     const unsubscribe = service.subscribeToPriceUpdates(
       (price) => {
         setPriceData(price);
