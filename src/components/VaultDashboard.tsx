@@ -5,6 +5,7 @@ import { DepositForm } from './DepositForm';
 import { WithdrawForm } from './WithdrawForm';
 import { TradeForm } from './TradeForm';
 import { TransactionHistory } from './TransactionHistory';
+import { PriceChart } from './PriceChart';
 import './VaultDashboard.css';
 
 export function VaultDashboard() {
@@ -63,6 +64,9 @@ export function VaultDashboard() {
 
       <div className="dashboard-content">
         <div className="main-section">
+          {/* Live Price Chart */}
+          <PriceChart pair="SUI/USDC" />
+
           {/* Vault Balance Card */}
           <VaultBalance />
 

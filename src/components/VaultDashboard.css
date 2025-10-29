@@ -74,6 +74,14 @@
   padding: 2rem;
 }
 
+/* Price Chart */
+.price-chart {
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .dashboard-content {
